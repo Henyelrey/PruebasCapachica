@@ -10,10 +10,25 @@ pipeline {
 
   environment {
     COMPOSER_PROCESS_TIMEOUT = '1800'
-    PROJECT_DIR = 'turismo-backend'   // tu proyecto PHP vive aquí
+    COMPOSER_MEMORY_LIMIT = '-1'
+    PROJECT_DIR = 'turismo-backend'
+
+    // === DB de testing (usa tus valores actuales) ===
+    DB_CONNECTION = 'mysql'
+    DB_HOST = '172.20.80.211'
+    DB_PORT = '3306'
+    DB_DATABASE = 'turismobackend_test'
+    DB_USERNAME = 'nick'
+    DB_PASSWORD = 'nick123'
+
+    // === entorno Laravel testing ===
+    APP_ENV = 'testing'
+    APP_DEBUG = 'true'
+    APP_KEY = 'base64:VNw8bkkhaDoZEijO3hBuD3uJUrE+Yr7eRqfth3pEJ4U='
   }
 
   stages {
+
     stage('Checkout') {
       steps {
         deleteDir()
@@ -24,17 +39,17 @@ pipeline {
         sh '''
           set -eux
           test -f "$PROJECT_DIR/composer.json" || { echo "No existe $PROJECT_DIR/composer.json"; ls -la; exit 1; }
+          echo "OK: encontrado $PROJECT_DIR/composer.json"
         '''
       }
     }
 
-    stage('Test + Coverage (Docker PHP 8.3)') {
-      // si tus tests tardan más, sube este timeout sólo para este stage
-      options { timeout(time: 25, unit: 'MINUTES') }
+    stage('Test + Coverage (Docker PHP 8.3 + MySQL)') {
+      options { timeout(time: 30, unit: 'MINUTES') }
       agent {
         docker {
           image 'php:8.3-cli'
-          args '-u root'
+          args '-u root'     // MySQL es externo por IP; no se requiere red de Docker
           reuseNode true
         }
       }
@@ -44,14 +59,8 @@ pipeline {
           cd "$PROJECT_DIR"
 
           apt-get update
-          apt-get install -y git unzip libzip-dev zlib1g-dev curl libicu-dev
-          docker-php-ext-install zip intl
-
-          # DB para testing: SQLite
-          docker-php-ext-install pdo_sqlite sqlite3
-
-          # (opcional si usas otras features en tests)
-          # docker-php-ext-install bcmath
+          apt-get install -y git unzip libzip-dev zlib1g-dev curl default-mysql-client libicu-dev
+          docker-php-ext-install zip intl pdo_mysql
 
           curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
@@ -62,40 +71,54 @@ pipeline {
           php -m | sort
           composer -V
 
-          # === Entorno de pruebas Laravel (.env.testing) ===
-          cat > .env.testing <<'EOF'
-APP_ENV=testing
-APP_DEBUG=true
-APP_KEY=
+          # ===== Espera a MySQL =====
+          for i in $(seq 1 60); do
+            if mysqladmin ping -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USERNAME" -p"$DB_PASSWORD" --silent; then
+              echo "MySQL OK"; break
+            fi
+            echo "Esperando MySQL ($i/60)..."
+            sleep 2
+          done
+
+          # ===== .env.testing =====
+          cat > .env.testing <<EOF
+APP_ENV=${APP_ENV}
+APP_DEBUG=${APP_DEBUG}
+APP_KEY=${APP_KEY}
 CACHE_DRIVER=array
 QUEUE_CONNECTION=sync
 SESSION_DRIVER=array
+MAIL_MAILER=array
 
-# SQLite file (más estable que :memory: para procesos con cobertura)
-DB_CONNECTION=sqlite
-DB_DATABASE=/tmp/testing.sqlite
+DB_CONNECTION=${DB_CONNECTION}
+DB_HOST=${DB_HOST}
+DB_PORT=${DB_PORT}
+DB_DATABASE=${DB_DATABASE}
+DB_USERNAME=${DB_USERNAME}
+DB_PASSWORD=${DB_PASSWORD}
 EOF
 
-          # Genera APP_KEY para testing
-          touch /tmp/testing.sqlite
-          php artisan key:generate --env=testing --force
+          # Si prefieres regenerar clave:
+          # php artisan key:generate --env=testing --force
 
-          # Dependencias del proyecto
           composer install --no-interaction --prefer-dist
 
-          # Limpia y migra la BD de testing (si usas RefreshDatabase igual ayuda)
           php artisan config:clear --env=testing
           php artisan cache:clear  --env=testing || true
+
+          # Crea DB (si el usuario tiene permiso); ignora error si no aplica
+          mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USERNAME" -p"$DB_PASSWORD" \
+            -e "CREATE DATABASE IF NOT EXISTS \\\`$DB_DATABASE\\\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" || true
+
+          # Migraciones de testing
           php artisan migrate --env=testing --force
 
           mkdir -p coverage
 
-          # Usa phpunit.xml si existe
           CFG=''
           [ -f phpunit.xml ] && CFG='-c phpunit.xml'
           [ -f phpunit.xml.dist ] && CFG='-c phpunit.xml.dist'
 
-          # Ejecuta tests con cobertura (si hay demasiados errores, puedes agregar --stop-on-error)
           php -d xdebug.mode=coverage vendor/bin/phpunit $CFG \
             --coverage-clover coverage/clover.xml \
             --log-junit coverage/junit.xml
