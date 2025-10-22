@@ -1,11 +1,8 @@
 pipeline {
-    agent {
-        docker {
-            image 'php:8.2-fpm-alpine' // Imagen ligera basada en Alpine con PHP 8.2
-        }
-    }
+    agent any
 
     environment {
+        // Variables de entorno para Laravel
         APP_ENV = 'testing'
         APP_DEBUG = 'true'
 
@@ -20,43 +17,45 @@ pipeline {
     }
 
     stages {
-        stage('Setup Tools') {
+        stage('Clone') {
             steps {
-                echo "Instalando dependencias necesarias para Laravel dentro del contenedor Docker..."
-                // Usamos 'apk' (Alpine Package Manager) para instalar Git y PDO MySQL, 
-                // ya que la imagen 'php:8.2-fpm-alpine' se basa en Alpine Linux.
-                sh '''
-                    # Instalar Git para operaciones de repositorio
-                    apk add --no-cache git 
-                    # Instalar Composer (ya que en algunas imágenes minimalistas no viene por defecto)
-                    apk add --no-cache composer
-                    # Instalar la extensión PDO MySQL (fundamental para la conexión a DB)
-                    docker-php-ext-install pdo_mysql
-                '''
+                timeout(time: 2, unit: 'MINUTES') {
+                    git branch: 'main', credentialsId: 'githubtoken2', url: 'https://github.com/Henyelrey/PruebasCapachica.git'
+                }
             }
         }
-
+        
         stage('Install Dependencies') {
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
-                    echo "Instalando dependencias de Laravel con Composer..."
-                    sh 'composer install --no-interaction --prefer-dist --optimize-autoloader'
+                    echo "Intentando la instalación de dependencias de Laravel..."
+                    sh '''
+                        
+                        php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
+                        
+                        php composer-setup.php --install-dir=. --filename=composer.phar
+                        
+                        php -r "unlink('composer-setup.php');"
+                        
+                        echo "Ejecutando composer.phar install..."
+                        php composer.phar install --no-interaction --prefer-dist --optimize-autoloader
+                    '''
                 }
             }
         }
 
         stage('Build & Key Generation') {
             steps {
-                echo "Optimizando cachés y generando llave de aplicación (requerido por Laravel)..."
+                echo "Optimizando cachés y generando llave de aplicación..."
+                // Todos estos comandos requieren que PHP esté disponible en el PATH
                 sh '''
-                    # Limpieza de caché
                     php artisan config:clear
                     php artisan cache:clear
+                    php artisan route:clear
+                    php artisan view:clear
                     
-                    # Generación de la llave de aplicación (CRUCIAL)
                     php artisan key:generate
                     
-                    # Optimización
                     php artisan config:cache
                 '''
             }
@@ -67,9 +66,7 @@ pipeline {
                 timeout(time: 10, unit: 'MINUTES') {
                     echo "Preparando base de datos de prueba y ejecutando PHPUnit..."
                     sh '''
-                        # 1. Ejecutar migraciones en el entorno 'testing'
                         php artisan migrate --force --no-interaction
-                        # 2. Ejecutar pruebas
                         ./vendor/bin/phpunit --configuration phpunit.xml --testdox
                     '''
                 }
@@ -80,7 +77,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('SonarQube Analysis') {
             when { expression { return fileExists('sonar-project.properties') } }
             steps {
