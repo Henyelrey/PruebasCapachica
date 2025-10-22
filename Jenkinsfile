@@ -1,5 +1,5 @@
 pipeline {
-  agent { label 'linux' } // o "any" si el master es Linux y tiene Docker
+  agent { label 'any' } // o "any" si el master es Linux y tiene Docker
 
   options { timestamps(); disableConcurrentBuilds(); timeout(time: 30, unit: 'MINUTES') }
 
