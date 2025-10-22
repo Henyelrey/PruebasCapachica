@@ -1,8 +1,11 @@
 pipeline {
-    agent any
+    agent {
+        docker {
+            image 'php:8.2-fpm-alpine' // Imagen ligera y completa para Laravel
+        }
+    }
 
     environment {
-        // Variables de entorno para Laravel
         APP_ENV = 'testing'
         APP_DEBUG = 'true'
 
@@ -17,29 +20,21 @@ pipeline {
     }
 
     stages {
-        stage('Clone') {
+        stage('Setup Tools') {
             steps {
-                timeout(time: 2, unit: 'MINUTES') {
-                    git branch: 'main', credentialsId: 'githubtoken2', url: 'https://github.com/Henyelrey/PruebasCapachica.git'
-                }
+                echo "Instalando Git y PDO MySQL dentro del contenedor Docker..."
+                sh '''
+                    apk add --no-cache git composer
+                    docker-php-ext-install pdo_mysql
+                '''
             }
         }
-        
+
         stage('Install Dependencies') {
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
-                    echo "Intentando la instalación de dependencias de Laravel..."
-                    sh '''
-                        
-                        php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
-                        
-                        php composer-setup.php --install-dir=. --filename=composer.phar
-                        
-                        php -r "unlink('composer-setup.php');"
-                        
-                        echo "Ejecutando composer.phar install..."
-                        php composer.phar install --no-interaction --prefer-dist --optimize-autoloader
-                    '''
+                    echo "Instalando dependencias de Laravel con Composer..."
+                    sh 'composer install --no-interaction --prefer-dist --optimize-autoloader'
                 }
             }
         }
@@ -47,12 +42,9 @@ pipeline {
         stage('Build & Key Generation') {
             steps {
                 echo "Optimizando cachés y generando llave de aplicación..."
-                // Todos estos comandos requieren que PHP esté disponible en el PATH
                 sh '''
                     php artisan config:clear
                     php artisan cache:clear
-                    php artisan route:clear
-                    php artisan view:clear
                     
                     php artisan key:generate
                     
