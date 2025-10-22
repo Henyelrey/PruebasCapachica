@@ -5,12 +5,12 @@ pipeline {
     timestamps()
     disableConcurrentBuilds()
     timeout(time: 30, unit: 'MINUTES')
-    skipDefaultCheckout(true)   // evita el "Declarative: Checkout SCM" automático
+    skipDefaultCheckout(true)
   }
 
   environment {
     COMPOSER_PROCESS_TIMEOUT = '1800'
-    PROJECT_DIR = 'turismo-backend'   // ⬅️ tu proyecto PHP vive aquí
+    PROJECT_DIR = 'turismo-backend'   // tu proyecto PHP vive aquí
   }
 
   stages {
@@ -21,16 +21,16 @@ pipeline {
             credentialsId: 'github-pat',
             url: 'https://github.com/Henyelrey/PruebasCapachica.git'
 
-        // sanity check
         sh '''
           set -eux
           test -f "$PROJECT_DIR/composer.json" || { echo "No existe $PROJECT_DIR/composer.json"; ls -la; exit 1; }
-          echo "OK: encontrado $PROJECT_DIR/composer.json"
         '''
       }
     }
 
     stage('Test + Coverage (Docker PHP 8.3)') {
+      // si tus tests tardan más, sube este timeout sólo para este stage
+      options { timeout(time: 25, unit: 'MINUTES') }
       agent {
         docker {
           image 'php:8.3-cli'
@@ -44,26 +44,58 @@ pipeline {
           cd "$PROJECT_DIR"
 
           apt-get update
-          apt-get install -y git unzip libzip-dev zlib1g-dev curl
-          docker-php-ext-install zip
+          apt-get install -y git unzip libzip-dev zlib1g-dev curl libicu-dev
+          docker-php-ext-install zip intl
+
+          # DB para testing: SQLite
+          docker-php-ext-install pdo_sqlite sqlite3
+
+          # (opcional si usas otras features en tests)
+          # docker-php-ext-install bcmath
 
           curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
-          # Xdebug para coverage (si falla, no tumbar el build)
           pecl install xdebug || true
           docker-php-ext-enable xdebug || true
 
           php -v
+          php -m | sort
           composer -V
 
-          mkdir -p coverage
+          # === Entorno de pruebas Laravel (.env.testing) ===
+          cat > .env.testing <<'EOF'
+APP_ENV=testing
+APP_DEBUG=true
+APP_KEY=
+CACHE_DRIVER=array
+QUEUE_CONNECTION=sync
+SESSION_DRIVER=array
+
+# SQLite file (más estable que :memory: para procesos con cobertura)
+DB_CONNECTION=sqlite
+DB_DATABASE=/tmp/testing.sqlite
+EOF
+
+          # Genera APP_KEY para testing
+          touch /tmp/testing.sqlite
+          php artisan key:generate --env=testing --force
+
+          # Dependencias del proyecto
           composer install --no-interaction --prefer-dist
 
-          # usar config si existe
+          # Limpia y migra la BD de testing (si usas RefreshDatabase igual ayuda)
+          php artisan config:clear --env=testing
+          php artisan cache:clear  --env=testing || true
+          php artisan migrate --env=testing --force
+
+          mkdir -p coverage
+
+          # Usa phpunit.xml si existe
           CFG=''
           [ -f phpunit.xml ] && CFG='-c phpunit.xml'
           [ -f phpunit.xml.dist ] && CFG='-c phpunit.xml.dist'
 
+          # Ejecuta tests con cobertura (si hay demasiados errores, puedes agregar --stop-on-error)
           php -d xdebug.mode=coverage vendor/bin/phpunit $CFG \
             --coverage-clover coverage/clover.xml \
             --log-junit coverage/junit.xml
@@ -71,7 +103,6 @@ pipeline {
       }
       post {
         always {
-          // busca reports dentro del subdirectorio
           junit testResults: '**/coverage/junit.xml', allowEmptyResults: true
           archiveArtifacts artifacts: '**/coverage/*.xml', fingerprint: true
         }
