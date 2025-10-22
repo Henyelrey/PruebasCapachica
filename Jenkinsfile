@@ -1,31 +1,41 @@
 pipeline {
-    agent {
-        docker {
-            image 'php:8.2-fpm-alpine' // Imagen ligera y completa para Laravel
-        }
-    }
+    agent any
 
     environment {
+        // ... Variables de entorno ...
         APP_ENV = 'testing'
-        APP_DEBUG = 'true'
-
         DB_CONNECTION = 'mysql'
         DB_HOST = '192.168.31.233'
         DB_PORT = '3306'
         DB_DATABASE = 'turismobackend_test'
         DB_USERNAME = 'nick'
         DB_PASSWORD = 'nick123'
-
         SONARQUBE_ENV = 'Sonarqube'
     }
 
     stages {
-        stage('Setup Tools') {
+        stage('Clone') {
             steps {
-                echo "Instalando Git y PDO MySQL dentro del contenedor Docker..."
+                timeout(time: 2, unit: 'MINUTES') {
+                    git branch: 'main', credentialsId: 'githubtoken2', url: 'https://github.com/Henyelrey/PruebasCapachica.git'
+                }
+            }
+        }
+        
+        stage('Setup PHP & Composer') {
+            steps {
+                echo "Instalando PHP, Git y Composer en el agente (Requiere SUDO y APT)..."
                 sh '''
-                    apk add --no-cache git composer
-                    docker-php-ext-install pdo_mysql
+                    # Actualizar y agregar repositorios de software
+                    sudo apt-get update -y
+                    
+                    # Instalar Git, PHP CLI y las extensiones MySQL necesarias para Laravel
+                    sudo apt-get install -y git php-cli php-mysql php-mbstring php-xml
+                    
+                    # Descargar e instalar Composer globalmente (si sudo funciona)
+                    php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
+                    sudo php composer-setup.php --install-dir=/usr/local/bin --filename=composer
+                    php -r "unlink('composer-setup.php');"
                 '''
             }
         }
@@ -33,7 +43,7 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
-                    echo "Instalando dependencias de Laravel con Composer..."
+                    echo "Instalando dependencias con Composer..."
                     sh 'composer install --no-interaction --prefer-dist --optimize-autoloader'
                 }
             }
@@ -45,14 +55,14 @@ pipeline {
                 sh '''
                     php artisan config:clear
                     php artisan cache:clear
-                    
                     php artisan key:generate
-                    
                     php artisan config:cache
                 '''
             }
         }
-
+        
+        // ... (El resto de las etapas Test, SonarQube, Quality Gate y Deploy son las mismas)
+        
         stage('Test') {
             steps {
                 timeout(time: 10, unit: 'MINUTES') {
