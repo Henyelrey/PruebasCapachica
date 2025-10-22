@@ -13,7 +13,6 @@ pipeline {
     COMPOSER_MEMORY_LIMIT = '-1'
     PROJECT_DIR = 'turismo-backend'
 
-    // === DB de testing (usa tus valores actuales) ===
     DB_CONNECTION = 'mysql'
     DB_HOST = '172.20.80.211'
     DB_PORT = '3306'
@@ -21,7 +20,6 @@ pipeline {
     DB_USERNAME = 'nick'
     DB_PASSWORD = 'nick123'
 
-    // === entorno Laravel testing ===
     APP_ENV = 'testing'
     APP_DEBUG = 'true'
     APP_KEY = 'base64:VNw8bkkhaDoZEijO3hBuD3uJUrE+Yr7eRqfth3pEJ4U='
@@ -45,11 +43,10 @@ pipeline {
     }
 
     stage('Test + Coverage (Docker PHP 8.3 + MySQL)') {
-      options { timeout(time: 30, unit: 'MINUTES') }
       agent {
         docker {
           image 'php:8.3-cli'
-          args '-u root'     // MySQL es externo por IP; no se requiere red de Docker
+          args '-u root'
           reuseNode true
         }
       }
@@ -71,7 +68,7 @@ pipeline {
           php -m | sort
           composer -V
 
-          # ===== Espera a MySQL =====
+          # Esperar a MySQL
           for i in $(seq 1 60); do
             if mysqladmin ping -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USERNAME" -p"$DB_PASSWORD" --silent; then
               echo "MySQL OK"; break
@@ -80,7 +77,7 @@ pipeline {
             sleep 2
           done
 
-          # ===== .env.testing =====
+          # Generar .env.testing
           cat > .env.testing <<EOF
 APP_ENV=${APP_ENV}
 APP_DEBUG=${APP_DEBUG}
@@ -98,19 +95,15 @@ DB_USERNAME=${DB_USERNAME}
 DB_PASSWORD=${DB_PASSWORD}
 EOF
 
-          # Si prefieres regenerar clave:
-          # php artisan key:generate --env=testing --force
-
           composer install --no-interaction --prefer-dist
 
           php artisan config:clear --env=testing
-          php artisan cache:clear  --env=testing || true
+          php artisan cache:clear --env=testing || true
 
-          # Crea DB (si el usuario tiene permiso); ignora error si no aplica
+          # Crear BD si no existe (sin backticks ni escapes)
           mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USERNAME" -p"$DB_PASSWORD" \
-            -e "CREATE DATABASE IF NOT EXISTS \\\`$DB_DATABASE\\\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" || true
+            -e "CREATE DATABASE IF NOT EXISTS ${DB_DATABASE} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" || true
 
-          # Migraciones de testing
           php artisan migrate --env=testing --force
 
           mkdir -p coverage
@@ -141,9 +134,9 @@ EOF
               set -euxo pipefail
               cd "\$PROJECT_DIR"
               if [ -f sonar-project.properties ]; then
-                "${scannerHome}/bin/sonar-scanner"
+                "\${scannerHome}/bin/sonar-scanner"
               else
-                "${scannerHome}/bin/sonar-scanner" \\
+                "\${scannerHome}/bin/sonar-scanner" \\
                   -Dsonar.projectKey=pruebas-capachica \\
                   -Dsonar.projectName=PruebasCapachica \\
                   -Dsonar.sourceEncoding=UTF-8 \\
