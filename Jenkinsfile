@@ -1,5 +1,9 @@
 pipeline {
-    agent any
+    agent {
+        docker {
+            image 'php:8.2-fpm-alpine'
+        }
+    }
 
     environment {
         APP_ENV = 'testing'
@@ -44,6 +48,7 @@ pipeline {
                     php artisan cache:clear
                     php artisan route:clear
                     php artisan view:clear
+                    php artisan key:generate
                     php artisan config:cache
                 '''
             }
@@ -52,15 +57,15 @@ pipeline {
         stage('Test') {
             steps {
                 timeout(time: 10, unit: 'MINUTES') {
-                    echo "Ejecutando pruebas PHPUnit..."
+                    echo "Preparando base de datos de prueba y ejecutando PHPUnit..."
                     sh '''
+                        php artisan migrate --force
                         ./vendor/bin/phpunit --configuration phpunit.xml --testdox
                     '''
                 }
             }
             post {
                 always {
-                    // Si generas reportes JUnit, Jenkins los recogerá aquí
                     junit 'tests/_reports/*.xml'
                 }
             }
