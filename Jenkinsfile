@@ -5,22 +5,28 @@ pipeline {
     timestamps()
     disableConcurrentBuilds()
     timeout(time: 30, unit: 'MINUTES')
-    skipDefaultCheckout(true)   // ⬅️ Desactiva el "Declarative: Checkout SCM" automático
+    skipDefaultCheckout(true)   // evita el "Declarative: Checkout SCM" automático
   }
 
   environment {
     COMPOSER_PROCESS_TIMEOUT = '1800'
+    PROJECT_DIR = 'turismo-backend'   // ⬅️ tu proyecto PHP vive aquí
   }
 
   stages {
-
     stage('Checkout') {
       steps {
-        deleteDir() // limpia el workspace
-        // Clone explícito (robusto). Requiere credencial 'github-pat'
+        deleteDir()
         git branch: 'main',
             credentialsId: 'github-pat',
             url: 'https://github.com/Henyelrey/PruebasCapachica.git'
+
+        // sanity check
+        sh '''
+          set -eux
+          test -f "$PROJECT_DIR/composer.json" || { echo "No existe $PROJECT_DIR/composer.json"; ls -la; exit 1; }
+          echo "OK: encontrado $PROJECT_DIR/composer.json"
+        '''
       }
     }
 
@@ -35,12 +41,15 @@ pipeline {
       steps {
         sh '''
           set -euxo pipefail
+          cd "$PROJECT_DIR"
+
           apt-get update
           apt-get install -y git unzip libzip-dev zlib1g-dev curl
           docker-php-ext-install zip
 
           curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
+          # Xdebug para coverage (si falla, no tumbar el build)
           pecl install xdebug || true
           docker-php-ext-enable xdebug || true
 
@@ -50,15 +59,21 @@ pipeline {
           mkdir -p coverage
           composer install --no-interaction --prefer-dist
 
-          php -d xdebug.mode=coverage vendor/bin/phpunit -c phpunit.xml \
+          # usar config si existe
+          CFG=''
+          [ -f phpunit.xml ] && CFG='-c phpunit.xml'
+          [ -f phpunit.xml.dist ] && CFG='-c phpunit.xml.dist'
+
+          php -d xdebug.mode=coverage vendor/bin/phpunit $CFG \
             --coverage-clover coverage/clover.xml \
             --log-junit coverage/junit.xml
         '''
       }
       post {
         always {
-          junit testResults: 'coverage/junit.xml', allowEmptyResults: true
-          archiveArtifacts artifacts: 'coverage/*.xml', fingerprint: true
+          // busca reports dentro del subdirectorio
+          junit testResults: '**/coverage/junit.xml', allowEmptyResults: true
+          archiveArtifacts artifacts: '**/coverage/*.xml', fingerprint: true
         }
       }
     }
@@ -68,8 +83,22 @@ pipeline {
         withSonarQubeEnv('SonarQube-Server') {
           script {
             def scannerHome = tool name: 'SonarScanner', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
-            sh "${scannerHome}/bin/sonar-scanner"
-            // Si no tienes sonar-project.properties, usa el bloque CLI comentado que te pasé antes.
+            sh """
+              set -euxo pipefail
+              cd "\$PROJECT_DIR"
+              if [ -f sonar-project.properties ]; then
+                "${scannerHome}/bin/sonar-scanner"
+              else
+                "${scannerHome}/bin/sonar-scanner" \\
+                  -Dsonar.projectKey=pruebas-capachica \\
+                  -Dsonar.projectName=PruebasCapachica \\
+                  -Dsonar.sourceEncoding=UTF-8 \\
+                  -Dsonar.sources=app \\
+                  -Dsonar.tests=tests \\
+                  -Dsonar.php.coverage.reportPaths=coverage/clover.xml \\
+                  -Dsonar.junit.reportPaths=coverage/junit.xml
+              fi
+            """
           }
         }
       }
