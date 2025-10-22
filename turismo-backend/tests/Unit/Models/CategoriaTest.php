@@ -22,6 +22,7 @@ class CategoriaTest extends TestCase
             'descripcion' => $this->faker->text,
             'icono_url' => $this->faker->imageUrl()
         ];
+        //hola
 
         // Act
         $categoria = Categoria::create($data);
