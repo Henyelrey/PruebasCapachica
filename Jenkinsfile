@@ -29,12 +29,13 @@ pipeline {
                 timeout(time: 5, unit: 'MINUTES') {
                     sh '''
 						echo Instalando dependencias con Composer...
-                		curl -sS https://getcomposer.org/installer | php
-						php composer.phar self-update
-						php composer.phar install --no-dev --prefer-dist
+                		# 1. Descargar el instalador de Composer y ejecutarlo con PHP
+						curl -sS https://getcomposer.org/installer | php
+						mv composer.phar composer
+						chmod +x composer
                         echo "Instalando dependencias con Composer..."
-                        composer self-update
-                        composer install --no-interaction --prefer-dist --optimize-autoloader
+                        ./composer self-update
+                        ./composer install --no-interaction --prefer-dist --optimize-autoloader
                     '''
                 }
             }
