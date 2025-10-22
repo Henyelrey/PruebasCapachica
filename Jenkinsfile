@@ -8,7 +8,7 @@ pipeline {
         
         // Variables de Conexión a la DB de Pruebas
         DB_CONNECTION = 'mysql'
-        DB_HOST = '192.168.31.233'
+        DB_HOST = 'host.docker.internal'
         DB_PORT = '3306'
         DB_DATABASE = 'turismobackend_test'
         DB_USERNAME = 'nick'
