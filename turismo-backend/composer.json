@@ -59,18 +59,17 @@
             "Composer\\Config::disableProcessTimeout",
             "npx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74\" \"php artisan serve\" \"php artisan queue:listen --tries=1\" \"php artisan pail --timeout=0\" \"npm run dev\" --names=server,queue,logs,vite"
         ],
-        "scripts": {
-            "start": "php artisan serve --host 0.0.0.0 --port $PORT"
-        }
-
-        
-    },
+        "start": "php artisan serve --host 0.0.0.0 --port $PORT",
+        "test": "php -d xdebug.mode=coverage vendor/bin/phpunit -c phpunit.xml",
+        "test:ci": "php -d xdebug.mode=coverage vendor/bin/phpunit -c phpunit.xml --coverage-clover coverage/clover.xml --log-junit coverage/junit.xml"
+},
     "extra": {
         "laravel": {
             "dont-discover": []
         }
     },
     "config": {
+        "process-timeout": 1800,
         "optimize-autoloader": true,
         "preferred-install": "dist",
         "sort-packages": true,
