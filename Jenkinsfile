@@ -14,7 +14,7 @@ pipeline {
     PROJECT_DIR = 'turismo-backend'
 
     DB_CONNECTION = 'mysql'
-    DB_HOST = '172.20.80.211'
+    DB_HOST = '10.144.207.152'
     DB_PORT = '3306'
     DB_DATABASE = 'turismobackend_test'
     DB_USERNAME = 'nick'
