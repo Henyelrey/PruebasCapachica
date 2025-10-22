@@ -6,7 +6,7 @@ pipeline {
         APP_DEBUG = 'true'
 
         DB_CONNECTION = 'mysql'
-        DB_HOST = '192.168.31.232'
+        DB_HOST = '192.168.31.233'
         DB_PORT = '3306'
         DB_DATABASE = 'turismobackend_test'
         DB_USERNAME = 'nick'
