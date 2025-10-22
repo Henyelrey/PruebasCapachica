@@ -2,14 +2,16 @@ pipeline {
     agent any
 
     environment {
-        // ... Variables de entorno ...
         APP_ENV = 'testing'
+        APP_DEBUG = 'true'
+
         DB_CONNECTION = 'mysql'
         DB_HOST = '192.168.31.233'
         DB_PORT = '3306'
         DB_DATABASE = 'turismobackend_test'
         DB_USERNAME = 'nick'
         DB_PASSWORD = 'nick123'
+
         SONARQUBE_ENV = 'Sonarqube'
     }
 
@@ -21,67 +23,53 @@ pipeline {
                 }
             }
         }
-        
-        stage('Setup PHP & Composer') {
-            steps {
-                echo "Instalando PHP, Git y Composer en el agente (Requiere SUDO y APT)..."
-                sh '''
-                    # Actualizar y agregar repositorios de software
-                    sudo apt-get update -y
-                    
-                    # Instalar Git, PHP CLI y las extensiones MySQL necesarias para Laravel
-                    sudo apt-get install -y git php-cli php-mysql php-mbstring php-xml
-                    
-                    # Descargar e instalar Composer globalmente (si sudo funciona)
-                    php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
-                    sudo php composer-setup.php --install-dir=/usr/local/bin --filename=composer
-                    php -r "unlink('composer-setup.php');"
-                '''
-            }
-        }
 
         stage('Install Dependencies') {
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
-                    echo "Instalando dependencias con Composer..."
-                    sh 'composer install --no-interaction --prefer-dist --optimize-autoloader'
+                    sh '''
+                        echo "Instalando dependencias con Composer..."
+                        composer self-update
+                        composer install --no-interaction --prefer-dist --optimize-autoloader
+                    '''
                 }
             }
         }
 
-        stage('Build & Key Generation') {
+        stage('Build') {
             steps {
-                echo "Optimizando cachés y generando llave de aplicación..."
+                echo "Optimizando cachés y configuraciones de Laravel..."
                 sh '''
                     php artisan config:clear
                     php artisan cache:clear
-                    php artisan key:generate
+                    php artisan route:clear
+                    php artisan view:clear
                     php artisan config:cache
                 '''
             }
         }
-        
-        // ... (El resto de las etapas Test, SonarQube, Quality Gate y Deploy son las mismas)
-        
+
         stage('Test') {
             steps {
                 timeout(time: 10, unit: 'MINUTES') {
-                    echo "Preparando base de datos de prueba y ejecutando PHPUnit..."
+                    echo "Ejecutando pruebas PHPUnit..."
                     sh '''
-                        php artisan migrate --force --no-interaction
                         ./vendor/bin/phpunit --configuration phpunit.xml --testdox
                     '''
                 }
             }
             post {
                 always {
+                    // Si generas reportes JUnit, Jenkins los recogerá aquí
                     junit 'tests/_reports/*.xml'
                 }
             }
         }
 
         stage('SonarQube Analysis') {
-            when { expression { return fileExists('sonar-project.properties') } }
+            when {
+                expression { return fileExists('sonar-project.properties') }
+            }
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
                     withSonarQubeEnv("${SONARQUBE_ENV}") {
@@ -93,7 +81,9 @@ pipeline {
         }
 
         stage('Quality Gate') {
-            when { expression { return fileExists('sonar-project.properties') } }
+            when {
+                expression { return fileExists('sonar-project.properties') }
+            }
             steps {
                 echo "Esperando validación de calidad de código..."
                 sleep(10)
@@ -117,7 +107,11 @@ pipeline {
     }
 
     post {
-        success { echo "Pipeline 'Capachica' ejecutado correctamente." }
-        failure { echo "Error en el pipeline 'Capachica'." }
+        success {
+            echo "✅ Pipeline 'Capachica' ejecutado correctamente."
+        }
+        failure {
+            echo "❌ Error en el pipeline 'Capachica'."
+        }
     }
 }
