@@ -12,15 +12,15 @@ pipeline {
   }
 
   stages {
+
     stage('Checkout') {
       steps {
-        checkout([$class: 'GitSCM',
-          branches: [[name: '*/main']],
-          userRemoteConfigs: [[
-            url: 'https://github.com/Henyelrey/PruebasCapachica.git',
-            credentialsId: 'github-pat'
-          ]]
-        ])
+        // Asegura que no queden restos de un .git roto o workspace parcial
+        deleteDir()
+        // Checkout simple y robusto (equivale a un "git clone")
+        git branch: 'main',
+            credentialsId: 'github-pat',
+            url: 'https://github.com/Henyelrey/PruebasCapachica.git'
       }
     }
 
@@ -28,8 +28,8 @@ pipeline {
       agent {
         docker {
           image 'php:8.3-cli'
-          args '-u root'         // Necesario para apt-get y pecl
-          reuseNode true         // Reutiliza el workspace del nodo
+          args '-u root'         // necesario para apt-get/pecl en el contenedor de pruebas
+          reuseNode true         // reusar workspace para acelerar
         }
       }
       steps {
@@ -42,7 +42,7 @@ pipeline {
           # Composer
           curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
-          # Xdebug (opcional para coverage)
+          # Xdebug (opcional; no fallar si no compila)
           pecl install xdebug || true
           docker-php-ext-enable xdebug || true
 
@@ -70,9 +70,22 @@ pipeline {
       steps {
         withSonarQubeEnv('SonarQube-Server') {
           script {
-            // Usa la herramienta SonarScanner configurada en Manage Jenkins > Tools (llámala exactamente así)
+            // Usa la herramienta SonarScanner registrada en Manage Jenkins > Tools con este nombre
             def scannerHome = tool name: 'SonarScanner', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
-            sh "${scannerHome}/bin/sonar-scanner"
+            sh """
+              ${scannerHome}/bin/sonar-scanner
+            """
+            // Si NO tienes sonar-project.properties en el repo, usa esto en su lugar:
+            // sh """
+            //   ${scannerHome}/bin/sonar-scanner \
+            //     -Dsonar.projectKey=pruebas-capachica \
+            //     -Dsonar.projectName=PruebasCapachica \
+            //     -Dsonar.sources=app \
+            //     -Dsonar.tests=tests \
+            //     -Dsonar.sourceEncoding=UTF-8 \
+            //     -Dsonar.php.coverage.reportPaths=coverage/clover.xml \
+            //     -Dsonar.junit.reportPaths=coverage/junit.xml
+            // """
           }
         }
       }
@@ -92,10 +105,19 @@ pipeline {
     }
   }
 
+  // Importante: si el pipeline falla ANTES de asignar un node/workspace,
+  // cleanWs lanza MissingContextVariable. Lo protegemos.
   post {
     always {
-      // Limpieza opcional del workspace
-      cleanWs deleteDirs: true, notFailBuild: true
+      script {
+        try {
+          node {
+            cleanWs deleteDirs: true, notFailBuild: true
+          }
+        } catch (e) {
+          echo "Omitiendo cleanWs (no workspace disponible): ${e.message}"
+        }
+      }
     }
   }
 }
