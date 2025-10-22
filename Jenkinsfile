@@ -1,9 +1,5 @@
 pipeline {
-    agent {
-        docker {
-            image 'php:8.2-fpm-alpine'
-        }
-    }
+    agent any
 
     environment {
         APP_ENV = 'testing'
@@ -28,27 +24,45 @@ pipeline {
             }
         }
 
+        stage('Setup Tools') {
+            steps {
+                echo "Instalando PHP, extensiones y Composer en el agente host..."
+                sh '''
+                    sudo apt-get update && sudo apt-get install -y git php-cli php-mysql curl
+
+                    php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
+                    php composer-setup.php --install-dir=/usr/local/bin --filename=composer
+                    php -r "unlink('composer-setup.php');"
+                '''
+            }
+        }
+
         stage('Install Dependencies') {
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
                     sh '''
                         echo "Instalando dependencias con Composer..."
-                        composer self-update
+                        # Ahora Composer está disponible globalmente gracias a la etapa anterior
                         composer install --no-interaction --prefer-dist --optimize-autoloader
                     '''
                 }
             }
         }
 
-        stage('Build') {
+        stage('Build & Key Generation') {
             steps {
-                echo "Optimizando cachés y configuraciones de Laravel..."
+                echo "Optimizando cachés y generando llave de aplicación..."
                 sh '''
+                    # Limpieza de caché
                     php artisan config:clear
                     php artisan cache:clear
                     php artisan route:clear
                     php artisan view:clear
+                    
+                    # Generación de la llave de aplicación (CRUCIAL para Laravel)
                     php artisan key:generate
+                    
+                    # Optimización
                     php artisan config:cache
                 '''
             }
@@ -59,13 +73,16 @@ pipeline {
                 timeout(time: 10, unit: 'MINUTES') {
                     echo "Preparando base de datos de prueba y ejecutando PHPUnit..."
                     sh '''
-                        php artisan migrate --force
+                        # Ejecutar migraciones
+                        php artisan migrate --force --no-interaction
+                        # Ejecutar pruebas
                         ./vendor/bin/phpunit --configuration phpunit.xml --testdox
                     '''
                 }
             }
             post {
                 always {
+                    // Recoger reportes JUnit
                     junit 'tests/_reports/*.xml'
                 }
             }
@@ -113,10 +130,10 @@ pipeline {
 
     post {
         success {
-            echo "✅ Pipeline 'Capachica' ejecutado correctamente."
+            echo "Pipeline 'Capachica' ejecutado correctamente."
         }
         failure {
-            echo "❌ Error en el pipeline 'Capachica'."
+            echo "Error en el pipeline 'Capachica'."
         }
     }
 }
