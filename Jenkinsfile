@@ -8,7 +8,7 @@ pipeline {
         
         // Variables de Conexión a la DB de Pruebas
         DB_CONNECTION = 'mysql'
-        DB_HOST = 'host.docker.internal'
+        DB_HOST = '192.168.31.233'
         DB_PORT = '3306'
         DB_DATABASE = 'turismobackend_test'
         DB_USERNAME = 'nick'
@@ -20,8 +20,13 @@ pipeline {
     }
 
     stages {
-        // NOTA: La clonación ocurre automáticamente al inicio del Pipeline (Declarative: Checkout SCM)
 
+		stage('Initialize') {
+            steps {
+                // Esta línea diagnostica el problema de SSL
+                sh 'git config --global http.sslVerify false' 
+            }
+        }
         stage('Install Dependencies') {
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
