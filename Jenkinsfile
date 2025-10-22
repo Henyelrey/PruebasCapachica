@@ -1,5 +1,9 @@
 pipeline {
-    agent any
+    agent {
+        docker {
+            image 'php:8.2-fpm-alpine' // Imagen ligera basada en Alpine con PHP 8.2
+        }
+    }
 
     environment {
         APP_ENV = 'testing'
@@ -16,23 +20,18 @@ pipeline {
     }
 
     stages {
-        stage('Clone') {
-            steps {
-                timeout(time: 2, unit: 'MINUTES') {
-                    git branch: 'main', credentialsId: 'githubtoken2', url: 'https://github.com/Henyelrey/PruebasCapachica.git'
-                }
-            }
-        }
-
         stage('Setup Tools') {
             steps {
-                echo "Instalando PHP, extensiones y Composer en el agente host..."
+                echo "Instalando dependencias necesarias para Laravel dentro del contenedor Docker..."
+                // Usamos 'apk' (Alpine Package Manager) para instalar Git y PDO MySQL, 
+                // ya que la imagen 'php:8.2-fpm-alpine' se basa en Alpine Linux.
                 sh '''
-                    sudo apt-get update && sudo apt-get install -y git php-cli php-mysql curl
-
-                    php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
-                    php composer-setup.php --install-dir=/usr/local/bin --filename=composer
-                    php -r "unlink('composer-setup.php');"
+                    # Instalar Git para operaciones de repositorio
+                    apk add --no-cache git 
+                    # Instalar Composer (ya que en algunas imágenes minimalistas no viene por defecto)
+                    apk add --no-cache composer
+                    # Instalar la extensión PDO MySQL (fundamental para la conexión a DB)
+                    docker-php-ext-install pdo_mysql
                 '''
             }
         }
@@ -40,26 +39,21 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
-                    sh '''
-                        echo "Instalando dependencias con Composer..."
-                        # Ahora Composer está disponible globalmente gracias a la etapa anterior
-                        composer install --no-interaction --prefer-dist --optimize-autoloader
-                    '''
+                    echo "Instalando dependencias de Laravel con Composer..."
+                    sh 'composer install --no-interaction --prefer-dist --optimize-autoloader'
                 }
             }
         }
 
         stage('Build & Key Generation') {
             steps {
-                echo "Optimizando cachés y generando llave de aplicación..."
+                echo "Optimizando cachés y generando llave de aplicación (requerido por Laravel)..."
                 sh '''
                     # Limpieza de caché
                     php artisan config:clear
                     php artisan cache:clear
-                    php artisan route:clear
-                    php artisan view:clear
                     
-                    # Generación de la llave de aplicación (CRUCIAL para Laravel)
+                    # Generación de la llave de aplicación (CRUCIAL)
                     php artisan key:generate
                     
                     # Optimización
@@ -73,25 +67,22 @@ pipeline {
                 timeout(time: 10, unit: 'MINUTES') {
                     echo "Preparando base de datos de prueba y ejecutando PHPUnit..."
                     sh '''
-                        # Ejecutar migraciones
+                        # 1. Ejecutar migraciones en el entorno 'testing'
                         php artisan migrate --force --no-interaction
-                        # Ejecutar pruebas
+                        # 2. Ejecutar pruebas
                         ./vendor/bin/phpunit --configuration phpunit.xml --testdox
                     '''
                 }
             }
             post {
                 always {
-                    // Recoger reportes JUnit
                     junit 'tests/_reports/*.xml'
                 }
             }
         }
-
+        
         stage('SonarQube Analysis') {
-            when {
-                expression { return fileExists('sonar-project.properties') }
-            }
+            when { expression { return fileExists('sonar-project.properties') } }
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
                     withSonarQubeEnv("${SONARQUBE_ENV}") {
@@ -103,9 +94,7 @@ pipeline {
         }
 
         stage('Quality Gate') {
-            when {
-                expression { return fileExists('sonar-project.properties') }
-            }
+            when { expression { return fileExists('sonar-project.properties') } }
             steps {
                 echo "Esperando validación de calidad de código..."
                 sleep(10)
@@ -129,11 +118,7 @@ pipeline {
     }
 
     post {
-        success {
-            echo "Pipeline 'Capachica' ejecutado correctamente."
-        }
-        failure {
-            echo "Error en el pipeline 'Capachica'."
-        }
+        success { echo "Pipeline 'Capachica' ejecutado correctamente." }
+        failure { echo "Error en el pipeline 'Capachica'." }
     }
 }
