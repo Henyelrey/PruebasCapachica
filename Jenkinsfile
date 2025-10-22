@@ -1,15 +1,10 @@
 pipeline {
-  agent any
+  agent { label 'linux' } // o "any" si el master es Linux y tiene Docker
 
-  options {
-    timestamps()
-    disableConcurrentBuilds()
-    timeout(time: 30, unit: 'MINUTES')
-  }
+  options { timestamps(); disableConcurrentBuilds(); timeout(time: 30, unit: 'MINUTES') }
 
   environment {
     COMPOSER_PROCESS_TIMEOUT = '1800'
-    COMPOSER_CACHE_DIR = "${WORKSPACE}\\.composer-cache"
   }
 
   stages {
@@ -25,20 +20,28 @@ pipeline {
       }
     }
 
-    stage('Prep') {
-      steps {
-        bat 'php -v'
-        bat 'composer -V'
-        bat 'php -m | findstr /I xdebug'
-        bat 'if not exist coverage mkdir coverage'
-        bat 'composer install --no-interaction --prefer-dist'
+    stage('Test + Coverage (Docker PHP 8.3)') {
+      agent {
+        docker {
+          image 'php:8.3-cli'
+          args '-u root' // para instalar paquetes
+        }
       }
-    }
-
-    stage('Test + Coverage') {
       steps {
-        // genera coverage\\clover.xml y coverage\\junit.xml
-        bat 'php -d xdebug.mode=coverage vendor\\bin\\phpunit -c phpunit.xml --coverage-clover coverage\\clover.xml --log-junit coverage\\junit.xml'
+        sh '''
+          apt-get update
+          apt-get install -y git unzip libzip-dev zlib1g-dev
+          docker-php-ext-install zip
+          curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+          pecl install xdebug
+          docker-php-ext-enable xdebug
+          php -v
+          composer -V
+
+          mkdir -p coverage
+          composer install --no-interaction --prefer-dist
+          php -d xdebug.mode=coverage vendor/bin/phpunit -c phpunit.xml --coverage-clover coverage/clover.xml --log-junit coverage/junit.xml
+        '''
       }
       post {
         always {
@@ -51,8 +54,7 @@ pipeline {
     stage('SonarQube Analysis') {
       steps {
         withSonarQubeEnv('SonarQube-Server') {
-          // usa sonar-project.properties en la raíz del repo
-          bat 'sonar-scanner'
+          sh 'sonar-scanner'
         }
       }
     }
@@ -62,18 +64,10 @@ pipeline {
         script {
           timeout(time: 10, unit: 'MINUTES') {
             def qg = waitForQualityGate()
-            if (qg.status != 'OK') {
-              error "Quality Gate failed: ${qg.status}"
-            }
+            if (qg.status != 'OK') { error "Quality Gate failed: ${qg.status}" }
           }
         }
       }
-    }
-  }
-
-  post {
-    always {
-      echo 'Pipeline finished.'
     }
   }
 }
