@@ -4,7 +4,7 @@ pipeline {
   options {
     timestamps()
     disableConcurrentBuilds()
-    timeout(time: 30, unit: 'MINUTES')
+    timeout(time: 120, unit: 'MINUTES')
     skipDefaultCheckout(true)
   }
 
@@ -14,7 +14,7 @@ pipeline {
     PROJECT_DIR = 'turismo-backend'
 
     DB_CONNECTION = 'mysql'
-    DB_HOST = '10.144.207.152'
+    DB_HOST = '192.168.31.233'
     DB_PORT = '3306'
     DB_DATABASE = 'turismobackend_test'
     DB_USERNAME = 'nick'
