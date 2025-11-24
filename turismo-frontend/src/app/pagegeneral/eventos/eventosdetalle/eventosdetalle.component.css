@@ -1,0 +1,25 @@
+/* Estilos adicionales para la página de detalles */
+
+/* Animación de entrada */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+:host {
+  display: block;
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Estilos responsivos */
+@media (max-width: 640px) {
+  .max-w-4xl {
+    width: 95%;
+  }
+}

@@ -1,0 +1,382 @@
+/* Estilos globales */
+* {
+  box-sizing: border-box;
+}
+
+/* Animaciones */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+/* Clases de utilidad */
+.animate-fade-in {
+  animation: fadeInUp 1s ease-out;
+}
+
+.animate-slide-in {
+  animation: slideInRight 0.6s ease-out;
+}
+
+.animate-pulse {
+  animation: pulse 2s infinite;
+}
+
+/* Texto con límite de líneas */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Efectos de hover */
+.hover-lift {
+  transition: all 0.3s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+}
+
+/* Gradientes personalizados */
+.gradient-orange {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+}
+
+.gradient-orange-light {
+  background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%);
+}
+
+/* Backdrop blur personalizado */
+.backdrop-blur-custom {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* Sombras personalizadas */
+.shadow-orange {
+  box-shadow: 0 10px 30px rgba(249, 115, 22, 0.3);
+}
+
+.shadow-orange-lg {
+  box-shadow: 0 20px 60px rgba(249, 115, 22, 0.4);
+}
+
+/* Estilos para el calendario */
+:host ::ng-deep .cal-month-view {
+  background-color: transparent;
+  border-radius: 1rem;
+  overflow: hidden;
+}
+
+:host ::ng-deep .cal-month-view .cal-header {
+  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+  border-bottom: 1px solid #d1d5db;
+  padding: 1rem;
+  font-weight: 600;
+}
+
+:host ::ng-deep .cal-month-view .cal-day-cell {
+  border-right: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 0.5rem;
+  min-height: 80px;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+:host ::ng-deep .cal-month-view .cal-day-cell:hover {
+  background-color: #fef3c7;
+  transform: scale(1.02);
+}
+
+:host ::ng-deep .cal-month-view .cal-day-cell.cal-today {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  color: white;
+  font-weight: bold;
+}
+
+:host ::ng-deep .cal-month-view .cal-day-cell.cal-today:hover {
+  background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%);
+}
+
+:host ::ng-deep .cal-month-view .cal-day-cell.cal-in-month {
+  background-color: white;
+  color: #374151;
+}
+
+:host ::ng-deep .cal-month-view .cal-day-cell.cal-out-month {
+  background-color: #f9fafb;
+  color: #9ca3af;
+}
+
+:host ::ng-deep .cal-month-view .cal-day-cell.cal-has-events {
+  background-color: #fef3c7;
+}
+
+:host ::ng-deep .cal-month-view .cal-day-cell.cal-has-events::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 6px;
+  background-color: #f97316;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+/* Dark mode para el calendario */
+:host ::ng-deep .dark .cal-month-view .cal-header {
+  background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
+  border-bottom: 1px solid #6b7280;
+  color: white;
+}
+
+:host ::ng-deep .dark .cal-month-view .cal-day-cell {
+  border-right: 1px solid #4b5563;
+  border-bottom: 1px solid #4b5563;
+  background-color: #1f2937;
+  color: white;
+}
+
+:host ::ng-deep .dark .cal-month-view .cal-day-cell:hover {
+  background-color: #92400e;
+}
+
+:host ::ng-deep .dark .cal-month-view .cal-day-cell.cal-out-month {
+  background-color: #111827;
+  color: #6b7280;
+}
+
+:host ::ng-deep .dark .cal-month-view .cal-day-cell.cal-has-events {
+  background-color: #92400e;
+}
+
+/* Estilos para el modal */
+.modal-overlay {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.modal-content {
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* Scrollbar personalizado */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%);
+}
+
+/* Dark mode scrollbar */
+.dark ::-webkit-scrollbar-track {
+  background: #374151;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%);
+}
+
+/* Efectos de transición para las tarjetas */
+.card-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-hover:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+}
+
+/* Efectos de entrada escalonados */
+.stagger-animation {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+.stagger-animation:nth-child(1) { animation-delay: 0.1s; }
+.stagger-animation:nth-child(2) { animation-delay: 0.2s; }
+.stagger-animation:nth-child(3) { animation-delay: 0.3s; }
+.stagger-animation:nth-child(4) { animation-delay: 0.4s; }
+.stagger-animation:nth-child(5) { animation-delay: 0.5s; }
+.stagger-animation:nth-child(6) { animation-delay: 0.6s; }
+
+/* Efectos de botones */
+.btn-primary {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  border: none;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(249, 115, 22, 0.3);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(249, 115, 22, 0.4);
+  background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%);
+}
+
+.btn-secondary {
+  background: transparent;
+  border: 2px solid #f97316;
+  color: #f97316;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.btn-secondary:hover {
+  background: #f97316;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(249, 115, 22, 0.3);
+}
+
+/* Efectos de loading */
+.loading-spinner {
+  border: 4px solid #f3f4f6;
+  border-top: 4px solid #f97316;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Parallax effect */
+.parallax-bg {
+  background-attachment: fixed;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .parallax-bg {
+    background-attachment: scroll;
+  }
+  
+  .hero-title {
+    font-size: 2.5rem;
+  }
+  
+  .hero-subtitle {
+    font-size: 1.25rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .hero-title {
+    font-size: 2rem;
+  }
+  
+  .hero-subtitle {
+    font-size: 1.125rem;
+  }
+  
+  .card-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Focus states */
+button:focus,
+input:focus,
+select:focus {
+  outline: 2px solid #f97316;
+  outline-offset: 2px;
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .card-hover {
+    border: 2px solid #000;
+  }
+  
+  .btn-primary {
+    border: 2px solid #000;
+  }
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-friendly {
+    background: white !important;
+    color: black !important;
+  }
+}

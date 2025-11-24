@@ -1,0 +1,180 @@
+<div class="container mx-auto px-4 py-6">
+  <div class="flex justify-between items-center mb-6">
+    <h1 class="text-2xl font-bold">Gestión de Categorías</h1>
+    <button 
+      (click)="openCreateModal()" 
+      class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded">
+      Nueva Categoría
+    </button>
+  </div>
+
+  <!-- Búsqueda -->
+  <div class="mb-6 flex">
+    <input 
+      type="text" 
+      [(ngModel)]="searchTerm" 
+      placeholder="Buscar categorías..." 
+      class="border rounded-l px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+      (keyup.enter)="search()">
+    <button 
+      (click)="search()" 
+      class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-r">
+      Buscar
+    </button>
+  </div>
+
+  <!-- Tabla de Categorías -->
+  <div class="overflow-x-auto rounded-lg shadow">
+    <table class="min-w-full bg-white">
+      <thead class="bg-gray-100">
+        <tr>
+          <th class="py-3 px-4 text-left font-medium text-gray-600 uppercase tracking-wider">ID</th>
+          <th class="py-3 px-4 text-left font-medium text-gray-600 uppercase tracking-wider">Nombre</th>
+          <th class="py-3 px-4 text-left font-medium text-gray-600 uppercase tracking-wider">Descripción</th>
+          <th class="py-3 px-4 text-left font-medium text-gray-600 uppercase tracking-wider">Estado</th>
+          <th class="py-3 px-4 text-left font-medium text-gray-600 uppercase tracking-wider">Creado</th>
+          <th class="py-3 px-4 text-left font-medium text-gray-600 uppercase tracking-wider">Acciones</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-200">
+        <tr *ngIf="loading">
+          <td colspan="6" class="py-4 px-4 text-center">Cargando categorías...</td>
+        </tr>
+        <tr *ngIf="!loading && categorias.length === 0">
+          <td colspan="6" class="py-4 px-4 text-center">No se encontraron categorías</td>
+        </tr>
+        <tr *ngFor="let categoria of categorias" class="hover:bg-gray-50">
+          <td class="py-3 px-4">{{ categoria.id }}</td>
+          <td class="py-3 px-4">{{ categoria.nombre }}</td>
+          <td class="py-3 px-4">{{ categoria.descripcion || 'Sin descripción' }}</td>
+          <td class="py-3 px-4">
+            <span 
+              [class]="categoria.estado ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'" 
+              class="px-2 py-1 rounded-full text-xs font-medium">
+              {{ categoria.estado ? 'Activo' : 'Inactivo' }}
+            </span>
+          </td>
+          <td class="py-3 px-4">{{ formatDate(categoria.created_at) }}</td>
+          <td class="py-3 px-4 space-x-2">
+            <button 
+              (click)="openEditModal(categoria)" 
+              class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm">
+              Editar
+            </button>
+            <button 
+              (click)="toggleEstado(categoria)" 
+              [class]="categoria.estado ? 'bg-orange-500 hover:bg-orange-600' : 'bg-green-500 hover:bg-green-600'" 
+              class="text-white px-3 py-1 rounded text-sm">
+              {{ categoria.estado ? 'Desactivar' : 'Activar' }}
+            </button>
+            <button 
+              (click)="deleteCategoria(categoria.id)" 
+              class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm">
+              Eliminar
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Paginación -->
+  <div *ngIf="paginacion && paginacion.last_page > 1" class="mt-4 flex justify-center">
+    <nav class="inline-flex">
+      <button 
+        [disabled]="currentPage === 1" 
+        (click)="changePage(currentPage - 1)" 
+        [class.opacity-50]="currentPage === 1"
+        class="px-3 py-1 rounded-l border bg-white">
+        Anterior
+      </button>
+      
+      <ng-container *ngFor="let page of [].constructor(paginacion.last_page); let i = index">
+        <button 
+          (click)="changePage(i + 1)" 
+          [class]="currentPage === i + 1 ? 'bg-blue-600 text-white' : 'bg-white'" 
+          class="px-3 py-1 border-t border-b">
+          {{ i + 1 }}
+        </button>
+      </ng-container>
+      
+      <button 
+        [disabled]="currentPage === paginacion.last_page" 
+        (click)="changePage(currentPage + 1)"
+        [class.opacity-50]="currentPage === paginacion.last_page" 
+        class="px-3 py-1 rounded-r border bg-white">
+        Siguiente
+      </button>
+    </nav>
+  </div>
+</div>
+
+<!-- Modal para crear/editar -->
+<div *ngIf="isModalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+  <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-xl font-bold">{{ isEditing ? 'Editar Categoría' : 'Nueva Categoría' }}</h2>
+      <button (click)="closeModal()" class="text-gray-500 hover:text-gray-700">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+    
+    <form [formGroup]="categoriaForm" (ngSubmit)="saveCategoria()">
+      <div class="mb-4">
+        <label for="nombre" class="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
+        <input 
+          type="text" 
+          id="nombre" 
+          formControlName="nombre" 
+          class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          [class.border-red-500]="categoriaForm.get('nombre')?.invalid && categoriaForm.get('nombre')?.touched">
+        <div *ngIf="categoriaForm.get('nombre')?.invalid && categoriaForm.get('nombre')?.touched" class="text-red-500 text-sm mt-1">
+          El nombre es obligatorio
+        </div>
+      </div>
+      
+      <div class="mb-4">
+        <label for="descripcion" class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+        <textarea 
+          id="descripcion" 
+          formControlName="descripcion" 
+          rows="3" 
+          class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+      </div>
+      
+      <div class="mb-4">
+        <label for="imagen" class="block text-sm font-medium text-gray-700 mb-1">URL de Imagen</label>
+        <input 
+          type="text" 
+          id="imagen" 
+          formControlName="imagen" 
+          class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+      </div>
+      
+      <div class="mb-4 flex items-center">
+        <input 
+          type="checkbox" 
+          id="estado" 
+          formControlName="estado" 
+          class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+        <label for="estado" class="ml-2 block text-sm text-gray-700">Activo</label>
+      </div>
+      
+      <div class="flex justify-end gap-2">
+        <button 
+          type="button" 
+          (click)="closeModal()" 
+          class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+          Cancelar
+        </button>
+        <button 
+          type="submit" 
+          class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+          Guardar
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

@@ -1,0 +1,1 @@
+import"./chunk-4CLCTAJ7.js";var t=[{path:"",loadComponent:()=>import("./chunk-RPJ7QOLF.js").then(e=>e.EmprendimientosComponent),title:"Emprendimientos - Capachica Turismo"},{path:":id",loadComponent:()=>import("./chunk-EBLEZFNT.js").then(e=>e.EmprendimientoDetalleComponent),title:"Detalle de Emprendimiento - Capachica Turismo"}];export{t as emprendimientosRoutes};

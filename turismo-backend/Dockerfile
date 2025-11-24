@@ -1,9 +1,8 @@
-# Imagen base
 FROM php:8.2-fpm
 
-# Instalar dependencias del sistema + crear dirs necesarios
+# 1. Instalar dependencias (Solo Backend + Cliente DB)
 RUN apt-get update && apt-get install -y \
-      libpq-dev \
+      default-mysql-client \
       libzip-dev \
       libpng-dev \
       libjpeg-dev \
@@ -14,42 +13,33 @@ RUN apt-get update && apt-get install -y \
       supervisor \
       git \
       unzip \
-    && docker-php-ext-install pdo pdo_pgsql zip gd mbstring xml \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install pdo pdo_mysql zip gd mbstring xml \
     && mkdir -p /run/php /var/log/supervisor /var/lib/nginx/body /run/nginx \
     && chown -R www-data:www-data /run/php /var/lib/nginx /run/nginx
 
-# Copiar Composer
 COPY --from=composer:2.6 /usr/bin/composer /usr/local/bin/composer
 
-# Crear directorio de trabajo
 WORKDIR /var/www/html
 
-# Copiar código y configs
+# 2. Copiar archivos
 COPY . .
-COPY ./nginx.conf /etc/nginx/nginx.conf
+COPY ./nginx.conf /etc/nginx/conf.d/default.conf
 COPY ./supervisord.conf /etc/supervisord.conf
+COPY ./start.sh /usr/local/bin/start.sh
 
-# Prepara .env
-RUN cp .env.example .env || true
+RUN chmod +x /usr/local/bin/start.sh
 
-# Instala dependencias Laravel
-RUN composer install --optimize-autoloader --no-dev
+# 3. Instalar dependencias PHP (Sin dependencias de Node)
+RUN cp .env.example .env || true \
+    && composer install --optimize-autoloader --no-dev \
+    && php artisan key:generate \
+    && php artisan storage:link \
+    && chown -R www-data:www-data /var/www/html \
+    && chmod -R 755 /var/www/html
 
-# Claves, symlinks y migraciones
-RUN php artisan key:generate \
- && php artisan storage:link \
- && php artisan migrate --force \
- && php artisan db:seed --force
-
-# Permisos finales
-RUN chown -R www-data:www-data /var/www/html \
- && chmod -R 755 /var/www/html
-
-# Expone el puerto HTTP
 EXPOSE 80
-
-# Asegura que corra como root (Render lo inicia así)
 USER root
 
-# Arranca supervisord
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]
+# Usamos el script para esperar a la DB
+CMD ["/usr/local/bin/start.sh"]

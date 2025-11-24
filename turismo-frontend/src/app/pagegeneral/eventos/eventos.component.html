@@ -1,0 +1,515 @@
+<!-- Navegación -->
+<nav class="fixed top-0 w-full z-50 backdrop-blur-md bg-white/80 dark:bg-gray-900/80 border-b border-gray-200 dark:border-gray-700">
+  <div class="max-w-7xl mx-auto px-4 py-4">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center space-x-4">
+        <button (click)="goBack()" class="flex items-center space-x-2 text-gray-700 dark:text-gray-300 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">
+          <i class="fas fa-arrow-left"></i>
+          <span class="font-medium">Volver</span>
+        </button>
+        <div class="hidden sm:block w-px h-6 bg-gray-300 dark:bg-gray-600"></div>
+        <h1 class="font-bold text-xl text-gray-900 dark:text-white">
+          Eventos Culturales
+        </h1>
+      </div>
+      
+      <div class="flex items-center space-x-4">
+        <button class="p-2 text-gray-700 dark:text-gray-300 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">
+          <i class="fas fa-share-alt"></i>
+        </button>
+        <button class="p-2 text-gray-700 dark:text-gray-300 hover:text-red-500 transition-colors">
+          <i class="far fa-heart"></i>
+        </button>
+        <button (click)="openCalendar()" class="bg-gradient-to-r from-orange-500 to-orange-600 px-4 py-2 rounded-full text-white font-semibold text-sm hover:shadow-lg transform hover:scale-105 transition-all duration-300">
+          <i class="fas fa-calendar-alt mr-2"></i>
+          Ver Calendario
+        </button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- Hero Section -->
+<section *ngIf="eventoDestacado" class="relative min-h-screen flex items-center justify-center overflow-hidden" 
+         [style.background-image]="'url(' + getSliderImage(eventoDestacado) + ')'"
+         style="background-size: cover; background-position: center;">
+  
+  <!-- Overlay con gradiente -->
+  <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-black/30"></div>
+  
+  <!-- Contenido principal -->
+  <div class="relative z-10 text-center text-white px-4 max-w-5xl mx-auto animate-fade-in">
+    <!-- Fecha destacada -->
+    <div class="inline-flex items-center space-x-4 mb-8 backdrop-blur-md bg-white/10 rounded-full px-6 py-3 border border-white/20">
+      <div class="text-center">
+        <div class="text-3xl font-bold text-orange-300">{{ eventoDestacado.fecha_inicio | date:'dd' }}</div>
+        <div class="text-sm uppercase tracking-wider">{{ eventoDestacado.fecha_inicio | date:'MMM' }}</div>
+      </div>
+      <div class="w-px h-12 bg-white/30"></div>
+      <div class="text-left">
+        <div class="text-sm text-gray-300">Evento destacado</div>
+        <div class="text-lg font-semibold">{{ formatearHora(eventoDestacado.hora_inicio) }} - {{ formatearHora(eventoDestacado.hora_fin) }}</div>
+      </div>
+    </div>
+    
+    <!-- Título principal -->
+    <h1 class="text-5xl md:text-7xl lg:text-8xl font-bold mb-6 leading-tight">
+      {{ eventoDestacado.nombre }}
+    </h1>
+    
+    <!-- Subtítulo -->
+    <p class="text-xl md:text-2xl mb-8 max-w-3xl mx-auto font-light leading-relaxed">
+      {{ eventoDestacado.descripcion }}
+    </p>
+    
+    <!-- Información rápida -->
+    <div class="flex flex-wrap justify-center gap-6 mb-8">
+      <div class="flex items-center space-x-2 backdrop-blur-md bg-white/10 rounded-full px-4 py-2 border border-white/20">
+        <i class="fas fa-map-marker-alt text-orange-300"></i>
+        <span>{{ eventoDestacado.ubicacion || 'Ubicación por definir' }}</span>
+      </div>
+      <div class="flex items-center space-x-2 backdrop-blur-md bg-white/10 rounded-full px-4 py-2 border border-white/20">
+        <i class="fas fa-ticket-alt text-orange-300"></i>
+        <span>{{ eventoDestacado.precio || 'Entrada Libre' }}</span>
+      </div>
+      <div class="flex items-center space-x-2 backdrop-blur-md bg-white/10 rounded-full px-4 py-2 border border-white/20">
+        <i class="fas fa-users text-orange-300"></i>
+        <span>{{ eventoDestacado.tipo_evento || 'Evento Cultural' }}</span>
+      </div>
+    </div>
+    
+    <!-- Botones de acción -->
+    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+      <button class="bg-gradient-to-r from-orange-500 to-orange-600 px-8 py-4 rounded-full text-white font-semibold text-lg shadow-2xl hover:shadow-orange-500/50 transform hover:scale-105 transition-all duration-300">
+        <i class="fas fa-calendar-plus mr-3"></i>
+        Agregar al Calendario
+      </button>
+      <button class="backdrop-blur-md bg-white/10 border-2 border-white/30 px-8 py-4 rounded-full text-white font-semibold text-lg hover:bg-white/20 transition-all duration-300">
+        <i class="fas fa-directions mr-3"></i>
+        Más Información
+      </button>
+    </div>
+  </div>
+  
+  <!-- Indicador de scroll -->
+  <div class="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-white animate-bounce">
+    <i class="fas fa-chevron-down text-2xl"></i>
+  </div>
+</section>
+
+<!-- Controles de calendario -->
+<div class="sticky top-24 z-40 px-4 pb-8 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md">
+  <div class="max-w-7xl mx-auto">
+    <div class="bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl rounded-2xl p-4 shadow-xl">
+      <div class="flex flex-wrap gap-4 items-center justify-center">
+        <button type="button"
+          class="group relative overflow-hidden px-6 py-3 bg-orange-500 text-white rounded-xl font-bold transition-all duration-300 hover:bg-orange-600 hover:scale-105 hover:shadow-lg hover:shadow-orange-500/50"
+          (click)="openCalendar()">
+          <span class="absolute inset-0 bg-white/20 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-center duration-300"></span>
+          <span class="relative z-10 flex items-center">
+            <i class="fas fa-calendar-days mr-2 group-hover:animate-pulse"></i>
+            Ver Calendario
+          </span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de calendario -->
+<div *ngIf="mostrarModalCalendario"
+  class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 pt-20 transition-all duration-300"
+  (click)="openCalendar()">
+
+  <div class="relative w-full max-w-4xl bg-white dark:bg-gray-900 rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-700 transition-transform duration-500"
+       (click)="$event.stopPropagation()">
+
+    <!-- Header del modal -->
+    <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+      <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">
+        📅 Calendario de Eventos
+      </h2>
+      <button (click)="openCalendar()"
+        class="group p-2 rounded-full border border-gray-300 dark:border-gray-600 hover:bg-red-100 dark:hover:bg-red-800/30 transition-all duration-300">
+        <i class="fas fa-times text-gray-700 dark:text-gray-300 group-hover:text-red-500 transition-colors"></i>
+      </button>
+    </div>
+
+    <!-- Contenido del calendario -->
+    <div class="p-6">
+      <!-- Navegación del calendario -->
+      <div class="flex items-center justify-between mb-6">
+        <button (click)="anteriorMes()"
+          class="flex items-center gap-2 px-4 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-orange-600 dark:hover:text-orange-400 transition-all duration-200">
+          <i class="fas fa-chevron-left"></i>
+          <span>Anterior</span>
+        </button>
+
+        <div class="text-center">
+          <h3 class="text-2xl font-bold text-gray-800 dark:text-gray-100">
+            {{ viewDate | date:'MMMM yyyy' | titlecase }}
+          </h3>
+        </div>
+
+        <button (click)="siguienteMes()"
+          class="flex items-center gap-2 px-4 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-orange-600 dark:hover:text-orange-400 transition-all duration-200">
+          <span>Siguiente</span>
+          <i class="fas fa-chevron-right"></i>
+        </button>
+      </div>
+
+      <!-- Calendario -->
+      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <mwl-calendar-month-view 
+          [viewDate]="viewDate"
+          [events]="calendarEvents"
+          [cellTemplate]="cellTemplate"
+          [headerTemplate]="headerTemplate">
+        </mwl-calendar-month-view>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Templates del calendario -->
+<ng-template #cellTemplate let-day="day">
+  <div class="h-16 w-full flex flex-col items-center justify-center text-sm rounded-lg transition-all duration-200 group cursor-pointer"
+       [ngClass]="{
+         'bg-gradient-to-br from-orange-500 to-orange-600 text-white font-bold shadow-lg': day.isToday,
+         'bg-white dark:bg-gray-700 hover:bg-orange-100 dark:hover:bg-orange-800/30 text-gray-700 dark:text-gray-300': !day.isToday,
+         'opacity-40': !day.inMonth
+       }">
+    <span class="group-hover:scale-110 transition-transform duration-200">
+      {{ day.date | date:'d' }}
+    </span>
+    <div *ngIf="day.events?.length" class="flex gap-1 mt-1">
+      <div *ngFor="let event of day.events" class="w-2 h-2 rounded-full bg-orange-400 animate-pulse"></div>
+    </div>
+  </div>
+</ng-template>
+
+<ng-template #headerTemplate let-days="days">
+  <div class="grid grid-cols-7 text-center font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 text-sm py-3 border-b border-gray-200 dark:border-gray-600">
+    <div *ngFor="let day of days" class="uppercase tracking-wider">
+      {{ day.date | date:'EEE' }}
+    </div>
+  </div>
+</ng-template>
+
+<!-- Evento más cercano -->
+<section *ngIf="eventoCercano" class="px-6 py-16 bg-white dark:bg-gray-900">
+  <div class="max-w-6xl mx-auto">
+    <!-- Título de sección -->
+    <div class="text-center mb-12">
+      <h2 class="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4">
+        Próximo Evento
+      </h2>
+      <div class="w-24 h-1 bg-gradient-to-r from-orange-500 to-orange-600 mx-auto rounded-full"></div>
+    </div>
+
+    <!-- Contenido del evento -->
+    <div class="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl overflow-hidden">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-0">
+        <!-- Imagen -->
+        <div class="relative h-80 lg:h-full">
+          <img [src]="getSliderImage(eventoCercano)"
+               class="w-full h-full object-cover"
+               alt="Imagen del evento próximo">
+          <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+          
+          <!-- Fecha destacada -->
+          <div class="absolute top-6 left-6 bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-lg">
+            <div class="text-center">
+              <div class="text-3xl font-bold text-orange-600 dark:text-orange-400">
+                {{ eventoCercano.fecha_inicio | date:'dd' }}
+              </div>
+              <div class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase">
+                {{ eventoCercano.fecha_inicio | date:'MMM' }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Información -->
+        <div class="p-8 lg:p-12 flex flex-col justify-center">
+          <h3 class="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white mb-6">
+            {{ eventoCercano.nombre }}
+          </h3>
+          
+          <p class="text-lg text-gray-600 dark:text-gray-300 mb-8 leading-relaxed">
+            {{ eventoCercano.descripcion }}
+          </p>
+
+          <!-- Detalles del evento -->
+          <div class="space-y-4 mb-8">
+            <div class="flex items-center gap-4">
+              <div class="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
+                <i class="fas fa-clock text-orange-600 dark:text-orange-400"></i>
+              </div>
+              <div>
+                <p class="font-semibold text-gray-900 dark:text-white">Horario</p>
+                <p class="text-gray-600 dark:text-gray-300">
+                  {{ formatearHora(eventoCercano.hora_inicio) }} - {{ formatearHora(eventoCercano.hora_fin) }}
+                </p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-4">
+              <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+                <i class="fas fa-map-marker-alt text-blue-600 dark:text-blue-400"></i>
+              </div>
+              <div>
+                <p class="font-semibold text-gray-900 dark:text-white">Ubicación</p>
+                <p class="text-gray-600 dark:text-gray-300">
+                  {{ eventoCercano.ubicacion || 'Por confirmar' }}
+                </p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-4">
+              <div class="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+                <i class="fas fa-tag text-green-600 dark:text-green-400"></i>
+              </div>
+              <div>
+                <p class="font-semibold text-gray-900 dark:text-white">Tipo</p>
+                <p class="text-gray-600 dark:text-gray-300">
+                  {{ eventoCercano.tipo_evento || 'Evento Cultural' }}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Botón de acción -->
+          <div class="flex gap-4">
+            <a [routerLink]="['/eventos/eventosdetalle', eventoCercano.id]"
+               class="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-8 py-4 rounded-full font-semibold text-center hover:shadow-lg transform hover:scale-105 transition-all duration-300">
+              Ver Detalles
+            </a>
+            <button class="px-6 py-4 border-2 border-orange-500 text-orange-500 rounded-full font-semibold hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all duration-300">
+              <i class="fas fa-heart"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Filtros -->
+<section class="px-6 py-16 bg-gray-50 dark:bg-gray-800">
+  <div class="max-w-7xl mx-auto">
+    <div class="bg-white dark:bg-gray-900 rounded-3xl shadow-xl p-8">
+      <!-- Header de filtros -->
+      <div class="flex items-center justify-between mb-8">
+        <div class="flex items-center gap-4">
+          <div class="w-12 h-12 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl flex items-center justify-center">
+            <i class="fas fa-filter text-white"></i>
+          </div>
+          <div>
+            <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Filtros de Búsqueda</h3>
+            <p class="text-gray-600 dark:text-gray-400">Encuentra exactamente lo que buscas</p>
+          </div>
+        </div>
+        
+        <button (click)="limpiarFiltros()"
+          class="flex items-center gap-2 px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-orange-600 dark:hover:text-orange-400 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-all duration-200">
+          <i class="fas fa-times"></i>
+          <span>Limpiar todo</span>
+        </button>
+      </div>
+
+      <!-- Filtros -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <!-- Filtro por nombre -->
+        <div class="space-y-2">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            Buscar evento
+          </label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <i class="fas fa-search text-gray-400"></i>
+            </div>
+            <input [(ngModel)]="filtroNombre" 
+                   (input)="aplicarFiltros()"
+                   type="text"
+                   placeholder="Nombre del evento..."
+                   class="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-200">
+          </div>
+        </div>
+
+        <!-- Filtro por fecha -->
+        <div class="space-y-2">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            Desde fecha
+          </label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <i class="fas fa-calendar-alt text-gray-400"></i>
+            </div>
+            <input [(ngModel)]="filtroFechaInicio"
+                   (change)="aplicarFiltros()"
+                   type="date"
+                   class="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-200">
+          </div>
+        </div>
+
+        <!-- Filtro por tipo -->
+        <div class="space-y-2">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            Tipo de evento
+          </label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <i class="fas fa-tag text-gray-400"></i>
+            </div>
+            <select [(ngModel)]="filtroTipo"
+                    (change)="aplicarFiltros()"
+                    class="w-full pl-12 pr-10 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-200 appearance-none cursor-pointer">
+              <option value="">Todos los tipos</option>
+              <option *ngFor="let tipo of tiposEventosUnicos" [value]="tipo">{{ tipo }}</option>
+            </select>
+            <div class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
+              <i class="fas fa-chevron-down text-gray-400"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Resultado de filtros -->
+      <div class="flex items-center justify-between pt-6 border-t border-gray-200 dark:border-gray-700">
+        <div class="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+          <i class="fas fa-list-ul"></i>
+          <span>{{ eventosFiltrados.length }} evento(s) encontrado(s)</span>
+        </div>
+        
+        <button (click)="aplicarFiltros()"
+          class="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all duration-300">
+          <i class="fas fa-sync-alt mr-2"></i>
+          Aplicar Filtros
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Listado de eventos -->
+<section class="px-6 py-16 bg-white dark:bg-gray-900">
+  <div class="max-w-7xl mx-auto">
+    <!-- Título de sección -->
+    <div class="text-center mb-12">
+      <h2 class="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4">
+        Todos los Eventos
+      </h2>
+      <div class="w-24 h-1 bg-gradient-to-r from-orange-500 to-orange-600 mx-auto rounded-full"></div>
+    </div>
+
+    <!-- Loading state -->
+    <div *ngIf="isLoading" class="text-center py-12">
+      <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+      <p class="mt-4 text-gray-600 dark:text-gray-400">Cargando eventos...</p>
+    </div>
+
+    <!-- Grid de eventos -->
+    <div *ngIf="!isLoading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div *ngFor="let evento of eventosFiltrados" class="group bg-white dark:bg-gray-800 rounded-3xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
+        
+        <!-- Imagen del evento -->
+        <div class="relative h-64 overflow-hidden">
+          <img [src]="getSliderImage(evento)"
+               class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+               alt="Imagen del evento">
+          
+          <!-- Overlay con gradiente -->
+          <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+          
+          <!-- Fecha en esquina -->
+          <div class="absolute top-4 left-4 bg-white dark:bg-gray-800 rounded-lg p-2 shadow-lg">
+            <div class="text-center">
+              <div class="text-lg font-bold text-orange-600 dark:text-orange-400">
+                {{ evento.fecha_inicio | date:'dd' }}
+              </div>
+              <div class="text-xs text-gray-600 dark:text-gray-400 uppercase">
+                {{ evento.fecha_inicio | date:'MMM' }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Tipo de evento -->
+          <div class="absolute top-4 right-4 bg-orange-500 text-white px-3 py-1 rounded-full text-xs font-semibold">
+            {{ evento.tipo_evento || 'Evento' }}
+          </div>
+
+          <!-- Título sobre la imagen -->
+          <div class="absolute bottom-4 left-4 right-4">
+            <h3 class="text-xl font-bold text-white mb-2 line-clamp-2">
+              {{ evento.nombre }}
+            </h3>
+          </div>
+        </div>
+
+        <!-- Contenido -->
+        <div class="p-6">
+          <!-- Descripción -->
+          <p class="text-gray-600 dark:text-gray-300 mb-4 line-clamp-3">
+            {{ evento.descripcion }}
+          </p>
+
+          <!-- Detalles del evento -->
+          <div class="space-y-2 mb-6">
+            <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+              <i class="fas fa-clock text-orange-500"></i>
+              <span>{{ formatearHora(evento.hora_inicio) }} - {{ formatearHora(evento.hora_fin) }}</span>
+            </div>
+            
+            <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+              <i class="fas fa-calendar-alt text-orange-500"></i>
+              <span>{{ formatearFecha(evento.fecha_inicio) }}</span>
+            </div>
+            
+            <div *ngIf="evento.ubicacion" class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+              <i class="fas fa-map-marker-alt text-orange-500"></i>
+              <span>{{ evento.ubicacion }}</span>
+            </div>
+          </div>
+
+          <!-- Botón de acción -->
+          <div class="flex gap-3">
+            <a [routerLink]="['/eventos/eventosdetalle', evento.id]"
+               class="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-4 py-3 rounded-xl font-semibold text-center hover:shadow-lg transform hover:scale-105 transition-all duration-300">
+              Ver Detalles
+            </a>
+            <button class="px-4 py-3 border-2 border-orange-500 text-orange-500 rounded-xl hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all duration-300">
+              <i class="fas fa-heart"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mensaje cuando no hay eventos -->
+    <div *ngIf="!isLoading && eventosFiltrados.length === 0" class="text-center py-16">
+      <div class="max-w-md mx-auto">
+        <div class="w-24 h-24 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-6">
+          <i class="fas fa-calendar-times text-4xl text-gray-400"></i>
+        </div>
+        <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+          No se encontraron eventos
+        </h3>
+        <p class="text-gray-600 dark:text-gray-400 mb-6">
+          Intenta ajustar los filtros o busca con otros términos
+        </p>
+        <button (click)="limpiarFiltros()"
+          class="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all duration-300">
+          <i class="fas fa-refresh mr-2"></i>
+          Limpiar Filtros
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Botón flotante -->
+<button (click)="openCalendar()" 
+        class="fixed bottom-8 right-8 z-40 bg-gradient-to-r from-orange-500 to-orange-600 text-white p-4 rounded-full shadow-2xl hover:shadow-orange-500/50 transform hover:scale-110 transition-all duration-300">
+  <i class="fas fa-calendar-plus text-xl"></i>
+</button>
