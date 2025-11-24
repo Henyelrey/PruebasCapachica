@@ -10,7 +10,7 @@ RUN npm run build -- --configuration production
 # Etapa 2: Servir con Nginx
 FROM nginx:alpine
 # Copiar el build al servidor
-COPY --from=build /app/dist/nombre-de-tu-app /usr/share/nginx/html
+COPY --from=build /app/dist/turismo-frontend /usr/share/nginx/html
 # Copiar configuración personalizada
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80

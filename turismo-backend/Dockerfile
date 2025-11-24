@@ -24,7 +24,7 @@ WORKDIR /var/www/html
 
 # 2. Copiar archivos
 COPY . .
-COPY ./nginx.conf /etc/nginx/conf.d/default.conf
+COPY ./nginx.conf /etc/nginx/nginx.conf
 COPY ./supervisord.conf /etc/supervisord.conf
 COPY ./start.sh /usr/local/bin/start.sh
 
