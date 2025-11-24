@@ -56,8 +56,13 @@ pipeline {
           cd "$PROJECT_DIR"
 
           apt-get update
-          apt-get install -y git unzip libzip-dev zlib1g-dev curl default-mysql-client libicu-dev
-          docker-php-ext-install zip intl pdo_mysql
+          # Instalar librerías del sistema necesarias (incluyendo soporte para imágenes)
+          apt-get install -y git unzip libzip-dev zlib1g-dev curl default-mysql-client libicu-dev \
+            libpng-dev libjpeg62-turbo-dev libfreetype6-dev
+
+          # Configurar e instalar extensiones PHP (GD, Zip, Intl, PDO)
+          docker-php-ext-configure gd --with-freetype --with-jpeg
+          docker-php-ext-install -j$(nproc) gd zip intl pdo_mysql
 
           curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
@@ -100,7 +105,7 @@ EOF
           php artisan config:clear --env=testing
           php artisan cache:clear --env=testing || true
 
-          # Crear BD si no existe (sin backticks ni escapes)
+          # Crear BD si no existe
           mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USERNAME" -p"$DB_PASSWORD" \
             -e "CREATE DATABASE IF NOT EXISTS ${DB_DATABASE} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" || true
 
@@ -129,14 +134,18 @@ EOF
       steps {
         withSonarQubeEnv('SonarQube-Server') {
           script {
+            // Buscamos la herramienta instalada en Jenkins
             def scannerHome = tool name: 'SonarScanner', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
+            
+            // NOTA: Aquí usamos comillas dobles de Groovy (""") para interpolar scannerHome correctamente
             sh """
               set -euxo pipefail
               cd "\$PROJECT_DIR"
+              
               if [ -f sonar-project.properties ]; then
-                "\${scannerHome}/bin/sonar-scanner"
+                "${scannerHome}/bin/sonar-scanner"
               else
-                "\${scannerHome}/bin/sonar-scanner" \\
+                "${scannerHome}/bin/sonar-scanner" \\
                   -Dsonar.projectKey=pruebas-capachica \\
                   -Dsonar.projectName=PruebasCapachica \\
                   -Dsonar.sourceEncoding=UTF-8 \\
