@@ -171,30 +171,37 @@ EOF
     }
 
     // --- NUEVA ETAPA: DESPLIEGUE A PRODUCCIÓN ---
-    stage('Deploy to Production') {
+ stage('Deploy to Production') {
       agent any 
       steps {
         script {
-          echo "🚀 Iniciando Despliegue de Microservicios..."
-          
-          // Nos aseguramos de estar en la raíz donde está el docker-compose.yml
-          dir('.') {
+          echo "🚀 Iniciando Despliegue..."
+          dir('.') { // Estamos en la raíz del workspace
             sh '''
-              echo "🛑 Deteniendo contenedores anteriores..."
-              docker compose down || true
+              echo "🔎 DIAGNÓSTICO DE ARCHIVOS:"
+              # Este comando buscará el archivo en todas las carpetas
+              find . -name "docker-compose.yml"
               
-              echo "🏗️ Construyendo y levantando servicios (Angular + Laravel + MySQL)..."
-              # --build asegura que se recompilen las imágenes con los últimos cambios
-              docker compose up -d --build
+              echo "--------------------------------"
               
-              echo "🧹 Limpiando imágenes antiguas..."
-              docker image prune -f || true
+              # Intentamos ejecutar docker compose SOLO si el archivo está en la raíz
+              if [ -f "docker-compose.yml" ]; then
+                 echo "✅ Archivo encontrado en la raíz. Desplegando..."
+                 docker compose down || true
+                 docker compose up -d --build
+                 docker image prune -f || true
+              else
+                 echo "❌ ERROR FATAL: No veo el archivo docker-compose.yml en la raíz."
+                 echo "📂 Listado de archivos en la raíz:"
+                 ls -la
+                 # Forzamos error para que lo veas rojo
+                 exit 1
+              fi
             '''
           }
         }
       }
     }
-  }
 
   post {
     always {
