@@ -13,6 +13,7 @@ pipeline {
     COMPOSER_MEMORY_LIMIT = '-1'
     PROJECT_DIR = 'turismo-backend'
 
+    // Variables para el entorno de TESTING (Unit Tests)
     DB_CONNECTION = 'mysql'
     DB_HOST = '192.168.31.233'
     DB_PORT = '3306'
@@ -56,7 +57,7 @@ pipeline {
           cd "$PROJECT_DIR"
 
           apt-get update
-          # Instalar librerías del sistema necesarias (incluyendo soporte para imágenes)
+          # Instalar librerías del sistema necesarias (incluyendo soporte para imágenes y GD)
           apt-get install -y git unzip libzip-dev zlib1g-dev curl default-mysql-client libicu-dev \
             libpng-dev libjpeg62-turbo-dev libfreetype6-dev
 
@@ -73,7 +74,7 @@ pipeline {
           php -m | sort
           composer -V
 
-          # Esperar a MySQL
+          # Esperar a MySQL (Para los tests)
           for i in $(seq 1 60); do
             if mysqladmin ping -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USERNAME" -p"$DB_PASSWORD" --silent; then
               echo "MySQL OK"; break
@@ -105,7 +106,7 @@ EOF
           php artisan config:clear --env=testing
           php artisan cache:clear --env=testing || true
 
-          # Crear BD si no existe
+          # Crear BD si no existe (comando para tests)
           mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USERNAME" -p"$DB_PASSWORD" \
             -e "CREATE DATABASE IF NOT EXISTS ${DB_DATABASE} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" || true
 
@@ -134,10 +135,8 @@ EOF
       steps {
         withSonarQubeEnv('SonarQube-Server') {
           script {
-            // Buscamos la herramienta instalada en Jenkins
             def scannerHome = tool name: 'SonarScanner', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
             
-            // NOTA: Aquí usamos comillas dobles de Groovy (""") para interpolar scannerHome correctamente
             sh """
               set -euxo pipefail
               cd "\$PROJECT_DIR"
@@ -166,6 +165,31 @@ EOF
           timeout(time: 10, unit: 'MINUTES') {
             def qg = waitForQualityGate()
             if (qg.status != 'OK') error "Quality Gate failed: ${qg.status}"
+          }
+        }
+      }
+    }
+
+    // --- NUEVA ETAPA: DESPLIEGUE A PRODUCCIÓN ---
+    stage('Deploy to Production') {
+      agent any 
+      steps {
+        script {
+          echo "🚀 Iniciando Despliegue de Microservicios..."
+          
+          // Nos aseguramos de estar en la raíz donde está el docker-compose.yml
+          dir('.') {
+            sh '''
+              echo "🛑 Deteniendo contenedores anteriores..."
+              docker-compose down || true
+              
+              echo "🏗️ Construyendo y levantando servicios (Angular + Laravel + MySQL)..."
+              # --build asegura que se recompilen las imágenes con los últimos cambios
+              docker-compose up -d --build
+              
+              echo "🧹 Limpiando imágenes antiguas..."
+              docker image prune -f || true
+            '''
           }
         }
       }
