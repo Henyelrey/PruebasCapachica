@@ -1,6 +1,6 @@
 FROM php:8.2-fpm
 
-# 1. Instalar dependencias (Solo Backend + Cliente DB)
+# 1. Instalar dependencias del sistema
 RUN apt-get update && apt-get install -y \
       default-mysql-client \
       libzip-dev \
@@ -22,7 +22,15 @@ COPY --from=composer:2.6 /usr/bin/composer /usr/local/bin/composer
 
 WORKDIR /var/www/html
 
-# 2. Copiar archivos
+# --- ⚡ INICIO OPTIMIZACIÓN ⚡ ---
+# 2. Copiamos SOLO los ficheros de definición primero
+COPY composer.json composer.lock ./
+
+# 3. Instalamos dependencias (Esto se cacheará si no tocas el composer.json)
+# Usamos --no-scripts y --no-autoloader porque aún no tenemos el código de la app
+RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
+
+# 4. AHORA copiamos el resto del código
 COPY . .
 COPY ./nginx.conf /etc/nginx/nginx.conf
 COPY ./supervisord.conf /etc/supervisord.conf
@@ -30,16 +38,16 @@ COPY ./start.sh /usr/local/bin/start.sh
 
 RUN chmod +x /usr/local/bin/start.sh
 
-# 3. Instalar dependencias PHP (Sin dependencias de Node)
+# 5. Finalizamos la instalación (Generar autoloader optimizado)
 RUN cp .env.example .env || true \
-    && composer install --optimize-autoloader --no-dev \
+    && composer dump-autoload --optimize --no-dev \
     && php artisan key:generate \
     && php artisan storage:link \
     && chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html
+# --- FIN OPTIMIZACIÓN ---
 
 EXPOSE 80
 USER root
 
-# Usamos el script para esperar a la DB
 CMD ["/usr/local/bin/start.sh"]
