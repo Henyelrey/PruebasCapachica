@@ -13,9 +13,9 @@ pipeline {
     COMPOSER_MEMORY_LIMIT = '-1'
     PROJECT_DIR = 'turismo-backend'
 
-    // Variables para el entorno de TESTING (Unit Tests)
+    // Variables para el entorno de TESTING
     DB_CONNECTION = 'mysql'
-    DB_HOST = '10.60.233.152'
+    DB_HOST = '10.60.233.152' // Asegúrate que esta IP sea accesible desde el agente
     DB_PORT = '3306'
     DB_DATABASE = 'turismobackend_test'
     DB_USERNAME = 'nick'
@@ -57,11 +57,9 @@ pipeline {
           cd "$PROJECT_DIR"
 
           apt-get update
-          # Instalar librerías del sistema necesarias (incluyendo soporte para imágenes y GD)
           apt-get install -y git unzip libzip-dev zlib1g-dev curl default-mysql-client libicu-dev \
             libpng-dev libjpeg62-turbo-dev libfreetype6-dev
 
-          # Configurar e instalar extensiones PHP (GD, Zip, Intl, PDO)
           docker-php-ext-configure gd --with-freetype --with-jpeg
           docker-php-ext-install -j$(nproc) gd zip intl pdo_mysql
 
@@ -74,7 +72,7 @@ pipeline {
           php -m | sort
           composer -V
 
-          # Esperar a MySQL (Para los tests)
+          # Esperar a MySQL
           for i in $(seq 1 60); do
             if mysqladmin ping -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USERNAME" -p"$DB_PASSWORD" --silent; then
               echo "MySQL OK"; break
@@ -102,18 +100,15 @@ DB_PASSWORD=${DB_PASSWORD}
 EOF
 
           composer install --no-interaction --prefer-dist
-
           php artisan config:clear --env=testing
           php artisan cache:clear --env=testing || true
 
-          # Crear BD si no existe (comando para tests)
           mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USERNAME" -p"$DB_PASSWORD" \
             -e "CREATE DATABASE IF NOT EXISTS ${DB_DATABASE} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" || true
 
           php artisan migrate --env=testing --force
 
           mkdir -p coverage
-
           CFG=''
           [ -f phpunit.xml ] && CFG='-c phpunit.xml'
           [ -f phpunit.xml.dist ] && CFG='-c phpunit.xml.dist'
@@ -170,38 +165,30 @@ EOF
       }
     }
 
-    // --- NUEVA ETAPA: DESPLIEGUE A PRODUCCIÓN ---
- stage('Deploy to Production') {
+    stage('Deploy to Production') {
       agent any 
       steps {
         script {
-          echo "🚀 Iniciando Despliegue..."
-          dir('.') { // Estamos en la raíz del workspace
+          echo "🚀 Iniciando Despliegue de Microservicios..."
+          dir('.') {
             sh '''
-              echo "🔎 DIAGNÓSTICO DE ARCHIVOS:"
-              # Este comando buscará el archivo en todas las carpetas
-              find . -name "docker-compose.yml"
+              # Verificamos archivos (Debug)
+              ls -la
+
+              echo "🛑 Deteniendo contenedores anteriores..."
+              docker compose down || true
               
-              echo "--------------------------------"
+              echo "🏗️ Construyendo y levantando servicios..."
+              docker compose up -d --build
               
-              # Intentamos ejecutar docker compose SOLO si el archivo está en la raíz
-              if [ -f "docker-compose.yml" ]; then
-                 echo "✅ Archivo encontrado en la raíz. Desplegando..."
-                 docker compose down || true
-                 docker compose up -d --build
-                 docker image prune -f || true
-              else
-                 echo "❌ ERROR FATAL: No veo el archivo docker-compose.yml en la raíz."
-                 echo "📂 Listado de archivos en la raíz:"
-                 ls -la
-                 # Forzamos error para que lo veas rojo
-                 exit 1
-              fi
+              echo "🧹 Limpiando imágenes antiguas..."
+              docker image prune -f || true
             '''
           }
         }
       }
     }
+  }
 
   post {
     always {
