@@ -181,11 +181,11 @@ EOF
           dir('.') {
             sh '''
               echo "🛑 Deteniendo contenedores anteriores..."
-              docker-compose down || true
+              docker compose down || true
               
               echo "🏗️ Construyendo y levantando servicios (Angular + Laravel + MySQL)..."
               # --build asegura que se recompilen las imágenes con los últimos cambios
-              docker-compose up -d --build
+              docker compose up -d --build
               
               echo "🧹 Limpiando imágenes antiguas..."
               docker image prune -f || true
