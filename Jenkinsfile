@@ -15,7 +15,7 @@ pipeline {
 
     // Variables para el entorno de TESTING (Unit Tests)
     DB_CONNECTION = 'mysql'
-    DB_HOST = '172.22.13.35'
+    DB_HOST = '10.60.233.152'
     DB_PORT = '3306'
     DB_DATABASE = 'turismobackend_test'
     DB_USERNAME = 'nick'

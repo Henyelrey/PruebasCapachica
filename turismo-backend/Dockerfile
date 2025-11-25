@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y \
       libxml2-dev \
       nginx \
       supervisor \
-      git \
+      git \ 
       unzip \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install pdo pdo_mysql zip gd mbstring xml \
