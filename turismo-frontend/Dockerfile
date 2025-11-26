@@ -5,19 +5,20 @@ WORKDIR /app
 # 1. Copiamos archivos de dependencias
 COPY package*.json ./
 
-# 2. Instalación ROBUSTA para redes lentas (CORREGIDO)
-# Usamos 'timeout' en lugar de 'network-timeout'
+# 2. Instalación ROBUSTA y RÁPIDA
+# - Quitamos la línea 'timeout' que daba error.
+# - Agregamos '--no-audit' para acelerar la descarga.
+# - Mantenemos los reintentos por si tu internet parpadea.
 RUN npm config set fetch-retries 5 \
     && npm config set fetch-retry-factor 10 \
     && npm config set fetch-retry-mintimeout 20000 \
     && npm config set fetch-retry-maxtimeout 120000 \
-    && npm config set timeout 600000 \
-    && npm install
+    && npm install --no-audit
 
 # 3. Copiamos el resto del código
 COPY . .
 
-# 4. Construimos la app (Asegúrate que 'turismo-frontend' coincide con tu angular.json)
+# 4. Construimos la app
 RUN npm run build -- --configuration production
 
 # Etapa 2: Servir con Nginx
