@@ -1,29 +1,29 @@
 #!/bin/bash
 
 echo "🚀 Iniciando App Container..."
-
-# 1. Esperar a que el contenedor 'db' responda
-# Usamos las variables de entorno que Docker-Compose nos pasa
 echo "⏳ Esperando a la base de datos en host: $DB_HOST..."
 
-# Loop simple para esperar conexión
-max_tries=30
-count=0
-while ! mysqladmin ping -h"$DB_HOST" -u"$DB_USERNAME" -p"$DB_PASSWORD" --silent; do
-    echo "Esperando a MySQL ($count/$max_tries)..."
-    sleep 2
-    count=$((count+1))
-    if [ $count -ge $max_tries ]; then
-        echo "❌ Error: No se pudo conectar a la base de datos en $DB_HOST."
-        exit 1
+# Modificado: Quitamos --silent y mostramos el error explícitamente
+# Intentamos conectar hasta 30 veces
+for i in {1..30}; do
+    if mysqladmin ping -h"$DB_HOST" -u"$DB_USERNAME" -p"$DB_PASSWORD"; then
+        echo "✅ Conexión exitosa a la base de datos."
+        break
     fi
+    echo "⚠️ Falló intento $i/30. Esperando..."
+    sleep 2
 done
-echo "✅ Conexión exitosa a la base de datos."
 
-# 2. Ejecutar Migraciones (Crear tablas)
+# Si llegamos aquí y no conectó, fallamos.
+if ! mysqladmin ping -h"$DB_HOST" -u"$DB_USERNAME" -p"$DB_PASSWORD" --silent; then
+    echo "❌ Error Fatal: No se pudo conectar a la BD. Revisa usuario/password/host."
+    exit 1
+fi
+
+# 2. Ejecutar Migraciones
 echo "📂 Ejecutando migraciones..."
 php artisan migrate --force
 
-# 3. Iniciar Web Server (Supervisor -> Nginx + PHP)
+# 3. Iniciar Web Server
 echo "🔥 Iniciando Servidor Web..."
 exec /usr/bin/supervisord -c /etc/supervisord.conf

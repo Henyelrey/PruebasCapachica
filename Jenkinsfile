@@ -47,8 +47,8 @@ pipeline {
               echo "📂 Verificando que docker-compose.yml existe..."
               ls -la docker-compose.yml
 
-              echo "🛑 Bajando servicios..."
-              docker compose down || true
+              echo "🛑 Borrando contenedores Y VOLÚMENES viejos (-v)..."
+              docker compose down -v  # <--- ESTO ES LO QUE ARREGLARÁ EL PROBLEMA
               
               echo "🏗️ Levantando servicios..."
               # TIP: Si ya tienes una imagen construida, quitar '--build' lo hace más rápido.
