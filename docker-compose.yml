@@ -17,7 +17,8 @@ services:
       - db_data:/var/lib/mysql
     networks:
       - app-net
-
+    ports:
+      - "3307:3306"   # --- AGREGAR ESTO (Usamos 3307 para que no choque con tu MySQL local) ---
   # --- 2. BACKEND (LARAVEL) ---
   backend:
     build:
