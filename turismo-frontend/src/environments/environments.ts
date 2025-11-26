@@ -1,6 +1,6 @@
 export const environment = {
   production: false,
-  apiUrl: 'http://localhost:8000/api',
+  apiUrl: '/api',
   assetsUrl: 'http://localhost:8000',          // Para imágenes, archivos públicos
   /*apiUrl: 'http://3.142.99.8/api',
   assetsUrl: 'http://3.142.99.8',*/
