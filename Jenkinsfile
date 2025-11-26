@@ -165,15 +165,18 @@ EOF
       }
     }
 
+    // --- NUEVA ETAPA: DESPLIEGUE A PRODUCCIÓN CORREGIDA ---
     stage('Deploy to Production') {
-      agent any 
+      // BORRAMOS 'agent any' PARA NO PERDER EL CÓDIGO
+      
       steps {
         script {
           echo "🚀 Iniciando Despliegue de Microservicios..."
-          dir('.') {
+          
+          dir('.') { 
             sh '''
-              # Verificamos archivos (Debug)
-              ls -la
+              echo "📂 Verificando archivos en el workspace actual:"
+              ls -la docker-compose.yml || echo "⚠️ Sigue sin verse el archivo (revisa git push)"
 
               echo "🛑 Deteniendo contenedores anteriores..."
               docker compose down || true
